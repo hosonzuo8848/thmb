@@ -1,7 +1,7 @@
 name: t
 on:
-  push:
-    branches: [master]
+  schedule:
+    - cron: "0 19 * * *"   # 每日一次·幂等补新入库/改分类的书
   workflow_dispatch:
     inputs:
       force:
