@@ -1,5 +1,7 @@
 name: u
 on:
+  schedule:
+    - cron: "30 19 * * *"   # 每日 dry:报下载线新入库需补部的书数(不自动写库;积累后人工 dispatch mode=apply)
   workflow_dispatch:
     inputs:
       mode:
