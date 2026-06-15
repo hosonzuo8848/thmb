@@ -1,0 +1,31 @@
+name: u
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry / apply"
+        default: "dry"
+  push:
+    branches: [master]
+    paths: ["unify.py", ".github/workflows/unify.yml"]
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet requests urllib3
+      - env:
+          API_TOKEN: ${{ secrets.API_TOKEN }}
+          ACCOUNT_ID: ${{ secrets.ACCOUNT_ID }}
+          DB_ID: ${{ secrets.DB_ID }}
+          MAIN_TABLE: ${{ secrets.MAIN_TABLE }}
+          ID_COL: ${{ secrets.ID_COL }}
+          REQ_COL: ${{ secrets.REQ_COL }}
+          PFX_COL: ${{ secrets.PFX_COL }}
+          MIGRATE: ${{ secrets.MIGRATE }}
+          MODE: ${{ github.event.inputs.mode || 'dry' }}
+        run: python unify.py
