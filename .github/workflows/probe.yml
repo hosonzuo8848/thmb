@@ -1,0 +1,44 @@
+name: probe
+on:
+  push:
+    paths: [".github/workflows/probe.yml"]
+  workflow_dispatch:
+    inputs:
+      id:
+        description: IIIF id
+        default: "4916430"
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - name: probe contentDownload
+        run: |
+          python3 - <<'PY'
+          import urllib.request, urllib.parse, json, re
+          ID = "${{ github.event.inputs.id }}" or "4916430"
+          H = "www.digital.archives.go.jp"
+          UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+          # 1) viewer page -> najContentList -> cids
+          req = urllib.request.Request(f"https://{H}/img/{ID}", headers={"User-Agent": UA})
+          html = urllib.request.urlopen(req, timeout=60).read().decode("utf-8", "replace")
+          m = re.search(r"var najContentList = (\[.*?\]);", html, re.S)
+          if not m:
+              print("FATAL no najContentList; html len", len(html)); raise SystemExit(2)
+          lst = json.loads(m.group(1))
+          cids = ["da12/" + x["id"] for x in lst]
+          print(f"[1] pages={len(cids)} first={cids[0]} last={cids[-1]}")
+          # 2) POST contentDownload -> ZIP
+          body = "&".join("cid=" + urllib.parse.quote(c) for c in cids)
+          r = urllib.request.Request(
+              f"https://{H}/contentDownload/{ID}?type=imageJpeg",
+              data=body.encode(),
+              headers={"User-Agent": UA, "Content-Type": "application/x-www-form-urlencoded",
+                       "Referer": f"https://{H}/img/{ID}"},
+              method="POST")
+          try:
+              resp = urllib.request.urlopen(r, timeout=600)
+              data = resp.read()
+              print(f"[2] status={resp.status} ctype={resp.headers.get('Content-Type')} bytes={len(data)} magic={data[:4]!r} is_zip={data[:2]==b'PK'}")
+          except urllib.error.HTTPError as e:
+              print(f"[2] HTTPError {e.code} {e.headers.get('Content-Type')}"); print(e.read()[:300])
+          PY
